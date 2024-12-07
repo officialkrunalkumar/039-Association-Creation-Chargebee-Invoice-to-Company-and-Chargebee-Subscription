@@ -1,0 +1,454 @@
+{
+  "name": "Invoice to Company Association",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "6682544d-8265-4322-8356-f686dc8ce0d3",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -80,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "473ebabd-0322-4083-ae34-97147d9c396d",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/2-37766506?properties=customer_id,subscription_id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.paging.next.link }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.paging.next.link == undefined }}",
+              "requestInterval": 10
+            }
+          }
+        }
+      },
+      "id": "d7baba06-3881-4b51-a052-b0bf5c341fcf",
+      "name": "Get Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        0
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bda98281-62f8-439f-aee7-37d607b966a1",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "5af3e900-668a-48fc-ab69-af5591d44288",
+              "name": "cid",
+              "value": "={{ $json.properties.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c48b18a9-1398-455f-9c52-afbcced6f00f",
+              "name": "sid",
+              "value": "={{ $json.properties.subscription_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "a32c102a-4856-4407-a155-724ce8f78979",
+      "name": "Set IDs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "53c4c48c-a5cf-472d-82d3-a111b9579cbf",
+      "name": "Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/companies/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"limit\":1,\"after\":\"0\",\"sorts\":[\"desc\"],\"properties\":[\"hs_object_id\",\"chargebee_customer_id\"],\"filterGroups\":[{\"filters\":[{\"propertyName\":\"chargebee_customer_id\",\"value\":\"{{ $json.cid }}\",\"operator\":\"EQ\"}]}]}",
+        "options": {}
+      },
+      "id": "c518b472-3c88-4b66-a8af-a31642b80adf",
+      "name": "Get Company ID",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1380,
+        -260
+      ],
+      "retryOnFail": false,
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bf5bed2d-c92a-40a6-8306-44b9d47f9f05",
+              "leftValue": "=\"{{ $json.total }}\"",
+              "rightValue": "\"1\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c3e212f6-8dee-4428-8ac3-51fd239a0933",
+      "name": "Check Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1620,
+        -260
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "a46d98f8-75dc-4a8a-8ae9-a8debc4cf298",
+              "name": "IID",
+              "value": "={{ $('Set IDs').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "11614c7d-653c-417f-a656-6f0814eacc77",
+              "name": "CID",
+              "value": "={{ $json.results[0].id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0a20a9f7-429e-4d5f-9c26-27d976d79d43",
+      "name": "IID - CID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1860,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "id": "806849a0-debc-4a1f-bb39-0fca106294b7",
+      "name": "False Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1620,
+        80
+      ],
+      "webhookId": "a55e919d-8e1c-402c-9bf8-a1578754f673"
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "id": "1d9b00b1-633f-4217-83f3-ea0ea872c019",
+      "name": "True Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2260,
+        -280
+      ],
+      "webhookId": "4c918c7e-998a-4e90-b473-c5cb38c7238b"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.hubapi.com/crm/v4/objects/2-37766506/{{ $json.IID }}/associations/default/0-2/{{ $json.CID }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {}
+      },
+      "id": "188c704a-e4f6-4007-aabd-6af7f06d1789",
+      "name": "Associate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2080,
+        -280
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0dd78b4c-c849-4feb-bc7f-876339b1413c",
+              "leftValue": "={{ $json.cid }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "68c9dd2f-8894-402c-a56d-39007bb1adc9",
+      "name": "customer_id found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        20
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Get Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Invoices": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set IDs": {
+      "main": [
+        [
+          {
+            "node": "customer_id found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Set IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Company ID": {
+      "main": [
+        [
+          {
+            "node": "Check Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Response": {
+      "main": [
+        [
+          {
+            "node": "IID - CID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "False Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IID - CID": {
+      "main": [
+        [
+          {
+            "node": "Associate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "False Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "True Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Associate": {
+      "main": [
+        [
+          {
+            "node": "True Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "customer_id found?": {
+      "main": [
+        [
+          {
+            "node": "Get Company ID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "830cef27-b77d-4508-bfa1-4de90a126abf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f35844c20bd7f8456f907e3b5a901af1cf08cec7fee985138953357fd244e5bd"
+  },
+  "id": "8cc3Hb0JLmY7cMRu",
+  "tags": []
+}
