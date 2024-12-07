@@ -1,0 +1,453 @@
+{
+  "name": "Invoice to Subscription Association",
+  "nodes": [
+    {
+      "parameters": {},
+      "id": "caf53c75-5d96-424f-bc2c-760315f30454",
+      "name": "Start",
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -100,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "results",
+        "options": {}
+      },
+      "id": "0d4a0c6c-529a-4b2a-bff3-72dc0fbb6560",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        360,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://api.hubapi.com/crm/v3/objects/2-37766506?properties=customer_id,subscription_id",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "limit",
+              "value": "100"
+            }
+          ]
+        },
+        "options": {
+          "pagination": {
+            "pagination": {
+              "paginationMode": "responseContainsNextURL",
+              "nextURL": "={{ $response.body.paging.next.link }}",
+              "paginationCompleteWhen": "other",
+              "completeExpression": "={{ $response.body.paging.next.link == undefined }}",
+              "requestInterval": 10
+            }
+          }
+        }
+      },
+      "id": "a1369f48-0a1f-43b2-9a5b-9d3af1531cba",
+      "name": "Get Invoices",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        120,
+        0
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "bda98281-62f8-439f-aee7-37d607b966a1",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "5af3e900-668a-48fc-ab69-af5591d44288",
+              "name": "cid",
+              "value": "={{ $json.properties.customer_id }}",
+              "type": "string"
+            },
+            {
+              "id": "c48b18a9-1398-455f-9c52-afbcced6f00f",
+              "name": "sid",
+              "value": "={{ $json.properties.subscription_id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "790fbe5b-1a16-4b6d-ad01-4f492cfb6b20",
+      "name": "Set IDs",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        880,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.hubapi.com/crm/v3/objects/2-14800898/search",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\"limit\":1,\"after\":\"0\",\"sorts\":[\"desc\"],\"properties\":[\"hs_object_id\",\"subscription_id\"],\"filterGroups\":[{\"filters\":[{\"propertyName\":\"subscription_id\",\"value\":\"{{ $('Set IDs').item.json.sid }}\",\"operator\":\"EQ\"}]}]}",
+        "options": {}
+      },
+      "id": "dd81c68c-126c-444f-86e3-c88e4133f682",
+      "name": "Get Subscription",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1420,
+        -280
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6bbcefb6-d35b-475a-a3d0-11027de8ffb9",
+      "name": "Loop",
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        640,
+        0
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "bf5bed2d-c92a-40a6-8306-44b9d47f9f05",
+              "leftValue": "=\"{{ $json.total }}\"",
+              "rightValue": "\"1\"",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9904d485-1c83-4c8c-aef6-71e881d2a0a3",
+      "name": "Check Response",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1660,
+        -280
+      ]
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "id": "9fe61f30-dd70-47df-a2cd-87ed2f16935e",
+      "name": "False Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1640,
+        200
+      ],
+      "webhookId": "c59782ae-b5c1-4871-ad96-2eee033c9a27"
+    },
+    {
+      "parameters": {
+        "amount": 0.2
+      },
+      "id": "500b3753-146e-40f1-a27e-caeca2f08241",
+      "name": "True Wait",
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2380,
+        -300
+      ],
+      "webhookId": "ff5b960d-5c29-4454-9d5c-7f343035f86f"
+    },
+    {
+      "parameters": {
+        "method": "PUT",
+        "url": "=https://api.hubapi.com/crm/v4/objects/2-37766506/{{ $json.IID }}/associations/default/2-14800898/{{ $json.SID }}",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "hubspotAppToken",
+        "options": {}
+      },
+      "id": "9d929db7-6491-4a72-8264-9609f11c5183",
+      "name": "Associate",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        2160,
+        -300
+      ],
+      "credentials": {
+        "hubspotAppToken": {
+          "id": "XAN2EAun4Xi7kKU6",
+          "name": "Krunal: HubSpot Token"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "0dd78b4c-c849-4feb-bc7f-876339b1413c",
+              "leftValue": "={{ $json.sid }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "string",
+                "operation": "exists",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "922be2e6-3a61-4270-94d2-98ac78a593a3",
+      "name": "subscription_id found?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        1120,
+        20
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "e42898ff-4267-42ba-9ab4-625d3aa29c5f",
+              "name": "IID",
+              "value": "={{ $('Set IDs').item.json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "2430be91-d41f-4753-85ce-c31e5d92f7ec",
+              "name": "SID",
+              "value": "={{ $json.results[0].id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "b70321eb-8e26-43bf-9e75-99f9fd6d2f63",
+      "name": "IID SID",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        1920,
+        -300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Start": {
+      "main": [
+        [
+          {
+            "node": "Get Invoices",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Invoices": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set IDs": {
+      "main": [
+        [
+          {
+            "node": "subscription_id found?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Set IDs",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Subscription": {
+      "main": [
+        [
+          {
+            "node": "Check Response",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Response": {
+      "main": [
+        [
+          {
+            "node": "IID SID",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "False Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Associate": {
+      "main": [
+        [
+          {
+            "node": "True Wait",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "subscription_id found?": {
+      "main": [
+        [
+          {
+            "node": "Get Subscription",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "IID SID": {
+      "main": [
+        [
+          {
+            "node": "Associate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "False Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "True Wait": {
+      "main": [
+        [
+          {
+            "node": "Loop",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": false,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "1926aef3-920a-4b9e-a099-653d3ae7aaf7",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f35844c20bd7f8456f907e3b5a901af1cf08cec7fee985138953357fd244e5bd"
+  },
+  "id": "tzotePv7X8bZnAtp",
+  "tags": []
+}
